@@ -1,6 +1,7 @@
 import { Redis } from 'ioredis';
 import Container, { Service } from 'typedi';
 import { RedisKey } from '../helper/enums';
+import { handleChannelMessage } from './handlers';
 
 @Service()
 class CacheService {
@@ -86,16 +87,18 @@ class CacheService {
     }
   }
 
-  public async subscribeToChannel(channel: string, redisInstance: RedisKey = RedisKey.REDIS_URL): Promise<boolean> {
+  public async subscribeToChannel(
+    channel: string,
+    callback: (subscribed: boolean) => void,
+    redisInstance: RedisKey = RedisKey.REDIS_URL,
+  ): Promise<boolean> {
     try {
       const redis = this.getRedisInstance(redisInstance);
       redis.subscribe(channel, (err, count) => {
         if (err) {
-          // Just like other commands, subscribe() can fail for some reasons,
-          // ex network issues.
           console.error('Failed to subscribe: %s', err.message);
+          callback(false);
         } else {
-          // `count` represents the number of channels this client are currently subscribed to.
           console.log(`Subscribed successfully! This client is currently subscribed to ${count} channels.`);
         }
       });
@@ -103,7 +106,8 @@ class CacheService {
         console.log(`Reconnecting to Redis channel ${channel}...`);
       });
       redis.on('message', (channel, message) => {
-        console.log(`Received ${message} from ${channel}`);
+        console.log(`From channel: ${channel}\nReceived ${message}`);
+        handleChannelMessage(channel, message);
       });
     } catch (err) {
       console.error(`Failed to subscribe to channel ${channel}:`, err);

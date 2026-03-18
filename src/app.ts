@@ -38,7 +38,7 @@ async function startServer() {
     }),
   );
 
-  app.get('/subscribe/:id', (req, res) => {
+  app.get(`${config.api.prefix}/subscribe/:id`, (req, res) => {
     console.log('New client connecting...');
     res.writeHead(StatusCodes.OK, {
       'Content-Type': 'text/event-stream',
